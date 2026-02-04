@@ -34,7 +34,9 @@ const useStyles = makeStyles(theme => ({
         minHeight: 'calc(100vh - 300px)',
         maxHeight: 'calc(100vh - 300px)',
         height: '100%',
-        backgroundColor: 'rgb(227 227 227)'
+        backgroundColor: '#f3f4f6',
+        padding: 8,
+        borderRadius: 12,
         //overflow: 'scroll',
 
     }

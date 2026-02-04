@@ -19,15 +19,19 @@ const useStyles = makeStyles(theme => ({
     tableContainer: {
         maxHeight: '100%',
         height: '100%',
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        border: '1px solid #e5e7eb',
+        overflow: 'auto',
     },
     messageBox: {},
     message: {},
     sticky: {
         position: "sticky",
         left: 0,
-        background: "white",
+        background: "#fff",
         zIndex: 999,
-        boxShadow: "5px 2px 5px grey"
+        boxShadow: "6px 0 10px rgba(0,0,0,0.12)"
     },
 }));
 
@@ -35,36 +39,73 @@ const useStyles = makeStyles(theme => ({
 //https://thewebdev.info/2022/01/02/how-to-make-react-material-ui-table-row-and-columns-sticky/
 const StickyTableCell = withStyles((theme) => ({
     head: {
-        backgroundColor: theme.palette.common.black,
+        backgroundColor: '#0b1220',
         color: theme.palette.common.white,
         left: 0,
         position: "sticky",
         zIndex: theme.zIndex.appBar + 2,
         whiteSpace: 'nowrap',
+        fontWeight: 700,
+        fontSize: 12,
+        letterSpacing: 0.2,
+        paddingTop: 10,
+        paddingBottom: 10,
+        borderBottom: '1px solid rgba(255,255,255,0.12)',
+        borderRight: '1px solid rgba(255,255,255,0.10)',
+        '&:last-child': {
+            borderRight: 0,
+        },
     },
     body: {
-        backgroundColor: "#ddd",
+        backgroundColor: "#f8fafc",
         minWidth: "30px",
         left: 0,
         position: "sticky",
         zIndex: theme.zIndex.appBar + 1,
         whiteSpace: 'nowrap',
+        paddingTop: 6,
+        paddingBottom: 6,
+        borderBottom: '1px solid #e5e7eb',
+        borderRight: '1px solid #e5e7eb',
+        '&:last-child': {
+            borderRight: 0,
+        },
     }
 }))(TableCell);
 const StyledTableCell = withStyles((theme) => ({
     head: {
-        backgroundColor: theme.palette.common.black,
-        color: theme.palette.common.white
+        backgroundColor: '#0b1220',
+        color: theme.palette.common.white,
+        fontWeight: 700,
+        fontSize: 12,
+        letterSpacing: 0.2,
+        paddingTop: 10,
+        paddingBottom: 10,
+        borderBottom: '1px solid rgba(255,255,255,0.12)',
+        borderRight: '1px solid rgba(255,255,255,0.10)',
+        '&:last-child': {
+            borderRight: 0,
+        },
     },
     body: {
-        fontSize: 14
+        fontSize: 13,
+        paddingTop: 6,
+        paddingBottom: 6,
+        borderBottom: '1px solid #e5e7eb',
+        borderRight: '1px solid #e5e7eb',
+        '&:last-child': {
+            borderRight: 0,
+        },
     }
 }))(TableCell);
 const StyledTableRow = withStyles((theme) => ({
     root: {
         "&:nth-of-type(odd)": {
-            backgroundColor: theme.palette.action.hover
-        }
+            backgroundColor: '#f9fafb'
+        },
+        "&:hover": {
+            backgroundColor: '#eef2ff'
+        },
     }
 }))(TableRow);
 const sortByIndex = (items) =>
@@ -112,7 +153,13 @@ const WipDataGrid = (props) => {
             <div className={classes.container}>{
                 rows && rows.length > 0 ?
                     (<TableContainer className={classes.tableContainer}>
-                        <Table size='small' stickyHeader aria-label="sticky table" ref={tableRef}>
+                        <Table
+                            size='small'
+                            stickyHeader
+                            aria-label="sticky table"
+                            ref={tableRef}
+                            style={{ borderCollapse: 'collapse' }}
+                        >
                             <TableHead style={{
                                 whiteSpace: 'nowrap',
                             }}>
