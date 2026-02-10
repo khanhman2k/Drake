@@ -220,6 +220,18 @@ const UserSystemProgramTab = () => {
                                 multiple
                                 value={selectedSystemProgram.permissions}
                                 options={permissions}
+                                renderOption={(option, { selected }) => (
+                                    <Box
+                                        component="span"
+                                        style={{
+                                            display: 'block',
+                                            width: '100%',
+                                            backgroundColor: selected ? '#e3f2fd' : 'inherit'
+                                        }}
+                                    >
+                                        {getPermissionName(option)}
+                                    </Box>
+                                )}
                                 renderTags={(value, getTagProps) => value.map((option, index) => (
                                     <Chip
                                         {...getTagProps({ index })}
