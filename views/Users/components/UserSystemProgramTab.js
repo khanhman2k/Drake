@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useFormikContext } from 'formik';
-import { Box, Button, Grid, IconButton, List, ListItem, ListItemIcon, ListItemSecondaryAction, ListItemText, TextField } from '@material-ui/core';
+import { Box, Button, Checkbox, FormControlLabel, Grid, IconButton, List, ListItem, ListItemIcon, ListItemSecondaryAction, ListItemText, TextField, Chip } from '@material-ui/core';
 import DeleteIcon from '@material-ui/icons/Delete';
 import AddIcon from '@material-ui/icons/Add';
 
@@ -20,11 +20,36 @@ const UserSystemProgramTab = () => {
     const [selectedSystemProgram, setSelectedSystemProgram] = useState(null);
     const [addPermission, setAddPermission] = useState(false);
     const [open, setOpen] = useState(false);
+    const [isFilterPermission, setIsFilterPermission] = useState(false);
+    const [selectedPermissionName, setSelectedPermissionName] = useState('');
     const { values, errors, setFieldError, setFieldValue } = useFormikContext();
-    const fetchPermissions = async () => {
+    const getPermissionName = (permission) => {
+        if (!permission) {
+            return '';
+        }
+        if (typeof permission === 'string') {
+            return permission;
+        }
+        if (typeof permission === 'object' && permission.name) {
+            return permission.name;
+        }
+        return '';
+    };
+
+    const getLastSelectedPermissionName = (permissionList) => {
+        if (!Array.isArray(permissionList) || permissionList.length === 0) {
+            return '';
+        }
+        return getPermissionName(permissionList[permissionList.length - 1]);
+    };
+
+    const fetchPermissions = async (filterName) => {
         showLoading(true);
         try {
-            const response = await axios.get('/api/system-programs/permissions');
+            const endpoint = filterName
+                ? `/api/system-programs/permissions-filter?prg_name=${encodeURIComponent(filterName)}`
+                : '/api/system-programs/permissions';
+            const response = await axios.get(endpoint);
             console.log(response);
             const data = response.data;
             setPermissions(data);
@@ -42,12 +67,17 @@ const UserSystemProgramTab = () => {
     const handleSelect = (systemProgram) => {
         console.log(systemProgram);
         setSelectedSystemProgram(systemProgram);
+        const permissionName = systemProgram.name;
+        setSelectedPermissionName(permissionName);
+        if (isFilterPermission && permissionName) {
+            fetchPermissions(permissionName);
+        }
     };
-    const handlePermissionChange = (event, permissions) => {
-        console.log(permissions);
+    const handlePermissionChange = (event, nextPermissions) => {
+        console.log(nextPermissions);
         const newSP = {
             ...selectedSystemProgram,
-            permissions: permissions
+            permissions: nextPermissions
         };
         setSelectedSystemProgram(newSP);
         let systemPrograms = [];
@@ -64,6 +94,11 @@ const UserSystemProgramTab = () => {
         });
         //console.log(systemPrograms);
         setFieldValue('systemPrograms', systemPrograms);
+        const permissionName = getLastSelectedPermissionName(nextPermissions);
+        setSelectedPermissionName(permissionName);
+        if (isFilterPermission && permissionName) {
+            fetchPermissions(permissionName);
+        }
     };
 
     const handleAddSPClose = () => {
@@ -99,6 +134,19 @@ const UserSystemProgramTab = () => {
         }
         await setFieldValue('systemPrograms', systemPrograms);
         setSelectedSystemProgram(null);
+        setSelectedPermissionName('');
+    };
+    const handleFilterPermissionToggle = (event) => {
+        const checked = event.target.checked;
+        setIsFilterPermission(checked);
+        if (!checked) {
+            fetchPermissions();
+            return;
+        }
+        const permissionName = selectedPermissionName || getLastSelectedPermissionName(selectedSystemProgram && selectedSystemProgram.permissions);
+        if (permissionName) {
+            fetchPermissions(permissionName);
+        }
     };
     useEffect(() => {
         fetchPermissions();
@@ -145,21 +193,41 @@ const UserSystemProgramTab = () => {
 
                     {selectedSystemProgram && (
                         <>
-                            <IconButton
-                                color='primary'
-                                onClick={(event) => {
+                            <Box display="flex" alignItems="center">
+                                <IconButton
+                                    color='primary'
+                                    onClick={(event) => {
 
-                                    setAddPermission(true);
-                                }}
-                            >
-                                <AddIcon />
-                            </IconButton>
+                                        setAddPermission(true);
+                                    }}
+                                >
+                                    <AddIcon />
+                                </IconButton>
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            color="primary"
+                                            checked={isFilterPermission}
+                                            onChange={handleFilterPermissionToggle}
+                                        />
+                                    }
+                                    label="Filter"
+                                />
+                            </Box>
                             <Autocomplete
                                 onChange={handlePermissionChange}
-                                getOptionLabel={(option) => option}
+                                getOptionLabel={(option) => (typeof option === 'string' ? option : option && option.name ? option.name : '')}
                                 multiple
                                 value={selectedSystemProgram.permissions}
                                 options={permissions}
+                                //renderInput={(params) => <TextField {...params} label="Permissions" />}
+                                renderTags={(value, getTagProps) => value.map((option, index) => (
+                                    <Chip
+                                        {...getTagProps({ index })}
+                                        label={getPermissionName(option)}
+                                        style={{ backgroundColor: '#e3f2fd' }}
+                                    />
+                                ))}
                                 renderInput={(params) => <TextField {...params} label="Permissions" />}
                             />
 
