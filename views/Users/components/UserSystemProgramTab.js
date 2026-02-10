@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useFormikContext } from 'formik';
-import { Box, Button, Checkbox, FormControlLabel, Grid, IconButton, List, ListItem, ListItemIcon, ListItemSecondaryAction, ListItemText, TextField } from '@material-ui/core';
+import { Box, Button, Checkbox, Chip, FormControlLabel, Grid, IconButton, List, ListItem, ListItemIcon, ListItemSecondaryAction, ListItemText, TextField } from '@material-ui/core';
 import DeleteIcon from '@material-ui/icons/Delete';
 import AddIcon from '@material-ui/icons/Add';
 
@@ -220,6 +220,13 @@ const UserSystemProgramTab = () => {
                                 multiple
                                 value={selectedSystemProgram.permissions}
                                 options={permissions}
+                                renderTags={(value, getTagProps) => value.map((option, index) => (
+                                    <Chip
+                                        {...getTagProps({ index })}
+                                        label={getPermissionName(option)}
+                                        style={{ backgroundColor: '#e3f2fd' }}
+                                    />
+                                ))}
                                 renderInput={(params) => <TextField {...params} label="Permissions" />}
                             />
 
