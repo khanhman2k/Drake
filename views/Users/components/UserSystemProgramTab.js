@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useFormikContext } from 'formik';
 import { Box, Button, Checkbox, Chip, FormControlLabel, Grid, IconButton, List, ListItem, ListItemIcon, ListItemSecondaryAction, ListItemText, TextField } from '@material-ui/core';
+import { makeStyles } from '@material-ui/core/styles';
 import DeleteIcon from '@material-ui/icons/Delete';
 import AddIcon from '@material-ui/icons/Add';
 
@@ -11,8 +12,19 @@ import { getErrorMessage } from '../../../utils/errorHandler';
 import { Autocomplete } from '@material-ui/lab';
 import AddSystemProgramDialog from './Dialog/AddSystemProgramDialog';
 import AddPermissionModal from './Dialog/AddPermissionModal';
+const useStyles = makeStyles(() => ({
+    permissionOption: {
+        '&[aria-selected="true"]': {
+            backgroundColor: '#e3f2fd'
+        },
+        '&[aria-selected="true"][data-focus="true"]': {
+            backgroundColor: '#e3f2fd'
+        }
+    }
+}));
 const UserSystemProgramTab = () => {
     //console.log('[UserSystemProgramTab');
+    const classes = useStyles();
     const { showLoading } = useLoading();
     const { enqueueSnackbar } = useSnackbar();
     const [permissions, setPermissions] = useState([]);
@@ -220,18 +232,7 @@ const UserSystemProgramTab = () => {
                                 multiple
                                 value={selectedSystemProgram.permissions}
                                 options={permissions}
-                                renderOption={(option, { selected }) => (
-                                    <Box
-                                        component="span"
-                                        style={{
-                                            display: 'block',
-                                            width: '100%',
-                                            backgroundColor: selected ? '#e3f2fd' : 'inherit'
-                                        }}
-                                    >
-                                        {getPermissionName(option)}
-                                    </Box>
-                                )}
+                                classes={{ option: classes.permissionOption }}
                                 renderTags={(value, getTagProps) => value.map((option, index) => (
                                     <Chip
                                         {...getTagProps({ index })}
