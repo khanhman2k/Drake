@@ -11,6 +11,17 @@ import { getErrorMessage } from '../../../utils/errorHandler';
 import { Autocomplete } from '@material-ui/lab';
 import AddSystemProgramDialog from './Dialog/AddSystemProgramDialog';
 import AddPermissionModal from './Dialog/AddPermissionModal';
+import { makeStyles } from '@material-ui/core/styles';
+const useStyles = makeStyles(() => ({
+    permissionOption: {
+        '&[aria-selected="true"]': {
+            backgroundColor: '#e3f2fd'
+        },
+        '&[aria-selected="true"][data-focus="true"]': {
+            backgroundColor: '#e3f2fd'
+        }
+    }
+}));
 const UserSystemProgramTab = () => {
     //console.log('[UserSystemProgramTab');
     const { showLoading } = useLoading();
@@ -23,6 +34,7 @@ const UserSystemProgramTab = () => {
     const [isFilterPermission, setIsFilterPermission] = useState(false);
     const [selectedPermissionName, setSelectedPermissionName] = useState('');
     const { values, errors, setFieldError, setFieldValue } = useFormikContext();
+    const classes = useStyles();
     const getPermissionName = (permission) => {
         if (!permission) {
             return '';
@@ -34,13 +46,6 @@ const UserSystemProgramTab = () => {
             return permission.name;
         }
         return '';
-    };
-
-    const getLastSelectedPermissionName = (permissionList) => {
-        if (!Array.isArray(permissionList) || permissionList.length === 0) {
-            return '';
-        }
-        return getPermissionName(permissionList[permissionList.length - 1]);
     };
 
     const fetchPermissions = async (filterName) => {
@@ -92,9 +97,8 @@ const UserSystemProgramTab = () => {
 
 
         });
-        //console.log(systemPrograms);
         setFieldValue('systemPrograms', systemPrograms);
-        const permissionName = getLastSelectedPermissionName(nextPermissions);
+        const permissionName = selectedSystemProgram.name;
         setSelectedPermissionName(permissionName);
         if (isFilterPermission && permissionName) {
             fetchPermissions(permissionName);
@@ -143,7 +147,7 @@ const UserSystemProgramTab = () => {
             fetchPermissions();
             return;
         }
-        const permissionName = selectedPermissionName || getLastSelectedPermissionName(selectedSystemProgram && selectedSystemProgram.permissions);
+        const permissionName = selectedPermissionName;
         if (permissionName) {
             fetchPermissions(permissionName);
         }
@@ -221,6 +225,19 @@ const UserSystemProgramTab = () => {
                                 value={selectedSystemProgram.permissions}
                                 options={permissions}
                                 //renderInput={(params) => <TextField {...params} label="Permissions" />}
+                                classes={{ option: classes.permissionOption }}
+                                renderOption={(option, { selected }) => (
+                                    <Box
+                                        component="span"
+                                        style={{
+                                            display: 'block',
+                                            width: '100%',
+                                            backgroundColor: selected ? '#e3f2fd' : 'inherit'
+                                        }}
+                                    >
+                                        {getPermissionName(option)}
+                                    </Box>
+                                )}
                                 renderTags={(value, getTagProps) => value.map((option, index) => (
                                     <Chip
                                         {...getTagProps({ index })}
