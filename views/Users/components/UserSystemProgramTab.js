@@ -35,6 +35,7 @@ const useStyles = makeStyles(theme => ({
         overflow: 'hidden',
         height: '100%',
         minHeight: 380,
+        maxHeight: 'min(560px, calc(100vh - 260px))',
         display: 'flex',
         flexDirection: 'column',
     },
@@ -78,8 +79,23 @@ const useStyles = makeStyles(theme => ({
     },
     programList: {
         flex: 1,
-        overflow: 'auto',
+        minHeight: 0,
+        overflowY: 'scroll',
+        overflowX: 'hidden',
         padding: theme.spacing(0.5, 1.25, 1.25),
+        scrollbarWidth: 'thin',
+        scrollbarColor: '#a7b4cb #eef2f8',
+        '&::-webkit-scrollbar': {
+            width: 8,
+        },
+        '&::-webkit-scrollbar-track': {
+            background: '#eef2f8',
+            borderRadius: 999,
+        },
+        '&::-webkit-scrollbar-thumb': {
+            background: '#a7b4cb',
+            borderRadius: 999,
+        },
     },
     programItem: {
         borderRadius: 10,
