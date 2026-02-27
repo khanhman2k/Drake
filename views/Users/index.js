@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { makeStyles, withStyles } from '@material-ui/core/styles';
 import { useSnackbar } from 'notistack';
 import useLoading from '../../hooks/useLoading';
@@ -17,16 +17,13 @@ import Tooltip from '@material-ui/core/Tooltip';
 import TablePagination from '@material-ui/core/TablePagination';
 import IconButton from '@material-ui/core/IconButton';
 import EditIcon from '@material-ui/icons/Edit';
-import Moment from 'react-moment';
 import TextField from '@material-ui/core/TextField';
 import InputAdornment from '@material-ui/core/InputAdornment';
 import FilterListIcon from '@material-ui/icons/FilterList';
-import AddOrEditUserModal from './components/AddOrEditUserModal';
 import Button from '@material-ui/core/Button';
 import ClearIcon from '@material-ui/icons/Clear';
 import useAuth from '../../hooks/useAuth';
 import { hasPermission } from '../../auth/authRoles';
-import UploadFileModal from '../../components/UploadFileModal';
 import VisibilityOffIcon from '@material-ui/icons/VisibilityOff';
 import VisibilityIcon from '@material-ui/icons/Visibility';
 import DeleteIcon from '@material-ui/icons/Delete';
@@ -39,6 +36,10 @@ import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import Typography from '@material-ui/core/Typography';
 import Chip from '@material-ui/core/Chip';
+import CircularProgress from '@material-ui/core/CircularProgress';
+
+const AddOrEditUserModal = lazy(() => import('./components/AddOrEditUserModal'));
+const UploadFileModal = lazy(() => import('../../components/UploadFileModal'));
 
 const useStyles = makeStyles(theme => ({
     root: {
@@ -143,6 +144,13 @@ const useStyles = makeStyles(theme => ({
         marginTop: theme.spacing(0.5),
         color: theme.palette.text.secondary,
     },
+    lazyFallback: {
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: 80,
+        width: '100%',
+    },
 }));
 
 const StyledTableCell = withStyles(theme => ({
@@ -176,6 +184,20 @@ const parseNumberParam = (value, fallbackValue) => {
 };
 
 const hasValue = value => value !== undefined && value !== null && value !== '';
+
+const formatDateTime = value => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return '-';
+    }
+
+    const pad = number => String(number).padStart(2, '0');
+    const hours = date.getHours();
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+
+    return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(hour12)}:${pad(date.getMinutes())}:${pad(date.getSeconds())} ${period}`;
+};
 
 const renderAction = (row, actions, classes) => {
     if (!actions || actions.length === 0) {
@@ -231,7 +253,7 @@ const TableCellEx = ({ row, col, colIndex, canShowPassword, classes }) => {
     if (hasValue(rawValue) && col.type === 'datetime') {
         return (
             <TableCell key={colIndex} style={col.cellStyle}>
-                <Moment format='YYYY/MM/DD hh:mm:ss A'>{rawValue}</Moment>
+                {formatDateTime(rawValue)}
             </TableCell>
         );
     }
@@ -296,7 +318,7 @@ const renderRow = (columns, rows, actions, classes, canShowPassword) => {
 
     return rows.map((row, rowIndex) => (
         <TableRowEx
-            key={rowIndex}
+            key={row.emp_no || rowIndex}
             columns={columns}
             row={row}
             actions={actions}
@@ -316,6 +338,7 @@ const UserManager = () => {
     const [openImportOwner, setOpenImportOwner] = useState(false);
     const [openDialogDownload, setOpenDialogDownload] = useState(false);
     const [openDialogUpload, setOpenDialogUpload] = useState(false);
+    const lastFetchKeyRef = useRef('');
 
     const initialUsername = searchParams.get('username') || '';
     const [filters, setFilters] = useState({
@@ -397,7 +420,13 @@ const UserManager = () => {
         setOpenDialogUpload(false);
     };
 
-    const fetchUsers = useCallback(async () => {
+    const fetchUsers = useCallback(async (force = false) => {
+        const queryKey = `${rowState.pageSize}|${rowState.pageNumber}|${rowState.filters.username || ''}`;
+        if (!force && lastFetchKeyRef.current === queryKey) {
+            return;
+        }
+
+        lastFetchKeyRef.current = queryKey;
         showLoading(true);
 
         try {
@@ -412,6 +441,7 @@ const UserManager = () => {
                 items: data.items || [],
             }));
         } catch (err) {
+            lastFetchKeyRef.current = '';
             const { message } = getErrorMessage(err);
             enqueueSnackbar(message, {
                 variant: 'error',
@@ -474,12 +504,24 @@ const UserManager = () => {
     }, []);
 
     useEffect(() => {
+        const pageNumber = String(rowState.pageNumber);
+        const pageSize = String(rowState.pageSize);
+        const username = rowState.filters.username || '';
+        const isQueryChanged =
+            searchParams.get('pageNumber') !== pageNumber ||
+            searchParams.get('pageSize') !== pageSize ||
+            searchParams.get('username') !== username;
+
+        if (!isQueryChanged) {
+            return;
+        }
+
         setSearchParams({
-            pageNumber: String(rowState.pageNumber),
-            pageSize: String(rowState.pageSize),
-            username: rowState.filters.username || '',
+            pageNumber,
+            pageSize,
+            username,
         });
-    }, [rowState.pageNumber, rowState.pageSize, rowState.filters.username, setSearchParams]);
+    }, [rowState.pageNumber, rowState.pageSize, rowState.filters.username, searchParams, setSearchParams]);
 
     const columns = [
         {
@@ -704,7 +746,7 @@ const UserManager = () => {
                 showLoading(true);
                 try {
                     await axios.delete(`/api/users/${rowData.emp_no}`);
-                    fetchUsers();
+                    fetchUsers(true);
                 } catch (err) {
                     const { message } = getErrorMessage(err);
                     enqueueSnackbar(message, {
@@ -882,63 +924,87 @@ const UserManager = () => {
             </Dialog>
 
             {open && (
-                <AddOrEditUserModal
-                    selectedItem={selectedItem}
-                    open={open}
-                    onClose={() => {
-                        setOpen(false);
-                        setSelectedItem(null);
-                        fetchUsers();
-                    }}
-                />
+                <Suspense
+                    fallback={
+                        <div className={classes.lazyFallback}>
+                            <CircularProgress size={22} />
+                        </div>
+                    }
+                >
+                    <AddOrEditUserModal
+                        selectedItem={selectedItem}
+                        open={open}
+                        onClose={() => {
+                            setOpen(false);
+                            setSelectedItem(null);
+                            fetchUsers(true);
+                        }}
+                    />
+                </Suspense>
             )}
 
             {openImport && (
-                <UploadFileModal
-                    open={openImport}
-                    title='Upload User'
-                    onClose={() => {
-                        setOpenImport(false);
-                        fetchUsers();
-                    }}
-                    onStart={() => { }}
-                    url='/api/users/import/user'
-                    onFinished={() => {
-                        enqueueSnackbar('Upload Successful', {
-                            variant: 'success',
-                        });
-                    }}
-                    onFailure={err => {
-                        const { message } = getErrorMessage(err);
-                        enqueueSnackbar(message, {
-                            variant: 'error',
-                        });
-                    }}
-                />
+                <Suspense
+                    fallback={
+                        <div className={classes.lazyFallback}>
+                            <CircularProgress size={22} />
+                        </div>
+                    }
+                >
+                    <UploadFileModal
+                        open={openImport}
+                        title='Upload User'
+                        onClose={() => {
+                            setOpenImport(false);
+                            fetchUsers(true);
+                        }}
+                        onStart={() => { }}
+                        url='/api/users/import/user'
+                        onFinished={() => {
+                            enqueueSnackbar('Upload Successful', {
+                                variant: 'success',
+                            });
+                        }}
+                        onFailure={err => {
+                            const { message } = getErrorMessage(err);
+                            enqueueSnackbar(message, {
+                                variant: 'error',
+                            });
+                        }}
+                    />
+                </Suspense>
             )}
 
             {openImportOwner && (
-                <UploadFileModal
-                    open={openImportOwner}
-                    title='Upload Owner'
-                    onClose={() => {
-                        setOpenImportOwner(false);
-                        fetchUsers();
-                    }}
-                    onStart={() => { }}
-                    url='/api/users/import/owner'
-                    onFinished={() => {
-                        enqueueSnackbar('Upload Successful', {
-                            variant: 'success',
-                        });
-                    }}
-                    onFailure={err => {
-                        const { message } = getErrorMessage(err);
-                        enqueueSnackbar(message, {
-                            variant: 'error',
-                        });
-                    }}
-                />
+                <Suspense
+                    fallback={
+                        <div className={classes.lazyFallback}>
+                            <CircularProgress size={22} />
+                        </div>
+                    }
+                >
+                    <UploadFileModal
+                        open={openImportOwner}
+                        title='Upload Owner'
+                        onClose={() => {
+                            setOpenImportOwner(false);
+                            fetchUsers(true);
+                        }}
+                        onStart={() => { }}
+                        url='/api/users/import/owner'
+                        onFinished={() => {
+                            enqueueSnackbar('Upload Successful', {
+                                variant: 'success',
+                            });
+                        }}
+                        onFailure={err => {
+                            const { message } = getErrorMessage(err);
+                            enqueueSnackbar(message, {
+                                variant: 'error',
+                            });
+                        }}
+                    />
+                </Suspense>
             )}
         </div>
     );
