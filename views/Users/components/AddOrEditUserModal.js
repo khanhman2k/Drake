@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import AppBar from '@material-ui/core/AppBar';
 import Button from '@material-ui/core/Button';
 import IconButton from '@material-ui/core/IconButton';
-import Grid from '@material-ui/core/Grid';
 import Tab from '@material-ui/core/Tab';
 import Dialog from '@material-ui/core/Dialog';
+import DialogContent from '@material-ui/core/DialogContent';
+import Box from '@material-ui/core/Box';
+import Typography from '@material-ui/core/Typography';
 import TabContext from '@material-ui/lab/TabContext';
 import TabList from '@material-ui/lab/TabList';
 import TabPanel from '@material-ui/lab/TabPanel';
 import SaveIcon from '@material-ui/icons/Save';
-import CloseIcon from '@material-ui/icons/Close'
+import CloseIcon from '@material-ui/icons/Close';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import UserFormTab from './UserFormTab';
@@ -24,28 +26,105 @@ import useAlertDialog from '../../../hooks/useAlertDialog';
 import axios from 'axios';
 import { hasPermission } from '../../../auth/authRoles';
 import useAuth from '../../../hooks/useAuth';
-const useStyles = makeStyles((theme) => ({
-    diaglogPaper: {
-        minHeight: '60%'
+
+const useStyles = makeStyles(theme => ({
+    dialogPaper: {
+        minHeight: '70vh',
+        borderRadius: 16,
+        overflow: 'hidden',
     },
     root: {
-        flexGrow: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
         backgroundColor: theme.palette.background.paper,
     },
+    header: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: theme.spacing(1.5),
+        padding: theme.spacing(2, 2.5),
+        borderBottom: `1px solid ${theme.palette.divider}`,
+        background: 'linear-gradient(180deg, #f9fbff 0%, #f4f8ff 100%)',
+    },
+    headerInfo: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: theme.spacing(0.25),
+    },
+    title: {
+        fontWeight: 700,
+        color: '#13274a',
+        lineHeight: 1.2,
+    },
+    subtitle: {
+        color: theme.palette.text.secondary,
+        lineHeight: 1.4,
+    },
+    headerActions: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: theme.spacing(0.75),
+        flexShrink: 0,
+    },
     saveButton: {
-        color: theme.palette.primary[1]
-    }
+        textTransform: 'none',
+        borderRadius: 10,
+        fontWeight: 600,
+    },
+    closeButton: {
+        border: `1px solid ${theme.palette.divider}`,
+    },
+    tabsAppBar: {
+        boxShadow: 'none',
+        borderBottom: `1px solid ${theme.palette.divider}`,
+        backgroundColor: '#fff',
+    },
+    tabList: {
+        '& .MuiTab-root': {
+            textTransform: 'none',
+            fontWeight: 600,
+            minHeight: 48,
+        },
+    },
+    dialogContent: {
+        padding: 0,
+        backgroundColor: '#fcfdff',
+    },
+    tabPanel: {
+        padding: theme.spacing(2),
+    },
 }));
 
+const getPasswordRuleError = (value, label) => {
+    if (!value || value.length === 40) {
+        return '';
+    }
 
+    const missingRules = [];
+    if (!/[A-Z]/.test(value)) {
+        missingRules.push('at least one uppercase letter');
+    }
+    if (!/[0-9]/.test(value)) {
+        missingRules.push('at least one number');
+    }
+    if (!/[!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~]/.test(value)) {
+        missingRules.push('at least one symbol (!#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~)');
+    }
 
+    if (missingRules.length === 0) {
+        return '';
+    }
 
-const AddOrEditUserModal = (props) => {
+    return `${label} must include ${missingRules.join(', ')}`;
+};
+
+const AddOrEditUserModal = props => {
     const { open, selectedItem, onClose } = props;
     const { showAlert } = useAlertDialog();
     const { enqueueSnackbar } = useSnackbar();
     const { showLoading } = useLoading();
-
     const classes = useStyles();
     const [value, setValue] = useState('0');
 
@@ -53,122 +132,111 @@ const AddOrEditUserModal = (props) => {
 
     const isAdministrator = hasPermission({
         user,
-        roles: ["Administrator"]
+        roles: ['Administrator'],
     });
-    console.log(`Administrator: ${isAdministrator}`);
 
+    useEffect(() => {
+        setValue('0');
+    }, [open, selectedItem]);
 
     const handleChange = (event, newValue) => {
         setValue(newValue);
     };
 
-    const AddUser = (user) => {
-        return axios.post('/api/users', {
-            ...user
-        });
+    const addUser = userPayload => axios.post('/api/users', { ...userPayload });
+    const updateUser = userPayload => axios.put('/api/users', { ...userPayload });
 
-
-    };
-    const UpdateUser = (user) => {
-        return axios.put('/api/users', {
-            ...user
-        });
-    };
-
-    const onSubmitHandler = async (values, actions) => {
-
+    const onSubmitHandler = async values => {
         showLoading(true);
         try {
-
-
-            console.log(values);
             if (!selectedItem) {
-                await AddUser(values);
+                await addUser(values);
             } else {
-                await UpdateUser(values);
+                await updateUser(values);
             }
 
+            enqueueSnackbar('Saved successfully', {
+                variant: 'success',
+            });
             onClose && onClose();
-            showLoading(false);
-
         } catch (err) {
-            console.log(err);
-            showLoading(false);
             const { message } = getErrorMessage(err);
             enqueueSnackbar(message, {
-                variant: 'error'
+                variant: 'error',
             });
             showAlert({
                 title: 'Alert',
-                message: message
+                message,
             });
-
+        } finally {
+            showLoading(false);
         }
-
     };
 
     const onCloseHandler = (event, reason) => {
-        console.log(reason);
-        if (reason === 'backdropClick') return;
+        if (reason === 'backdropClick') {
+            return;
+        }
         onClose && onClose();
     };
 
-    const tabs = [
-        {
-            value: '1',
-            label: 'User Info',
-
-            component: <UserFormTab isEdit={selectedItem !== null} />
-        },
-        {
-            value: '2',
-            label: 'User Roles',
-            visible: isAdministrator ? true : false,
-            component: <UserRoleTab />
-        },
-        {
-            value: '3',
-            label: 'User System Programs',
-            visible: isAdministrator ? true : false,
-            component: <UserSystemProgramTab />
-        },
-        {
-            value: '4',
-            label: 'User Stations',
-            //visible: isAdministrator ? true : false,
-            //visible: isLineLeader ? true : false,
-            component: <UserStationTab isEdit={selectedItem !== null} />
-        },
-    ];
+    const tabs = useMemo(
+        () => [
+            {
+                label: 'User Info',
+                component: <UserFormTab isEdit={selectedItem !== null} />,
+            },
+            {
+                label: 'User Roles',
+                visible: isAdministrator,
+                component: <UserRoleTab />,
+            },
+            {
+                label: 'User System Programs',
+                visible: isAdministrator,
+                component: <UserSystemProgramTab />,
+            },
+            {
+                label: 'User Stations',
+                component: <UserStationTab isEdit={selectedItem !== null} />,
+            },
+        ],
+        [isAdministrator, selectedItem]
+    );
 
     const validationSchema = Yup.object({
         emp_no: Yup.string().required('Emp No is required'),
         emp_name: Yup.string().required('Emp Name is required'),
         emp_pass: Yup.string().required('Emp Pass is required').min(8),
-        emp_bc: Yup.string().required('Emp BC is required')
-            .min(8),
+        emp_bc: Yup.string().required('Emp BC is required').min(8),
         emp_pwd_pass: Yup.string(),
     });
 
     return (
-        <Dialog fullWidth maxWidth='md' open={open} onClose={onCloseHandler} classes={{
-            paper: classes.diaglogPaper
-        }}>
+        <Dialog
+            fullWidth
+            maxWidth='lg'
+            open={open}
+            onClose={onCloseHandler}
+            classes={{
+                paper: classes.dialogPaper,
+            }}
+        >
             <Formik
-                enableReinitialize={true}
+                enableReinitialize
                 initialValues={{
-                    emp_no: selectedItem ? selectedItem.emp_no ? selectedItem.emp_no : '' : '',
-                    emp_name: selectedItem ? selectedItem.emp_name ? selectedItem.emp_name : '' : '',
-                    emp_rank: selectedItem ? selectedItem.emp_rank ? selectedItem.emp_rank : '0' : '0',
-                    class_name: selectedItem ? selectedItem.class_name ? selectedItem.class_name : '' : '',
-                    station_name: selectedItem ? selectedItem.station_name ? selectedItem.station_name : '' : '',
-                    emp_pass: selectedItem ? selectedItem.emp_pass ? selectedItem.emp_pass : '' : '',
-                    emp_bc: selectedItem ? selectedItem.emp_bc ? selectedItem.emp_bc : '' : '',
-                    emp_pwd_pass: selectedItem ? selectedItem.emp_pwd_pass ? selectedItem.emp_pwd_pass : '' : '',
-                    email: selectedItem ? selectedItem.email ? selectedItem.email : '' : '',
-                    dept_name: selectedItem ? selectedItem.dept_name ? selectedItem.dept_name : 'PD' : 'PD',
-                    owner: selectedItem ? selectedItem.owner ? selectedItem.owner : '' : '',
-                    quit_date: selectedItem ? selectedItem.quit_date ? selectedItem.quit_date : '' : new Date(2000, 12, 31),
+                    emp_no: selectedItem?.emp_no || '',
+                    emp_name: selectedItem?.emp_name || '',
+                    emp_rank: selectedItem?.emp_rank || '0',
+                    class_name: selectedItem?.class_name || '',
+                    station_name: selectedItem?.station_name || '',
+                    emp_pass: selectedItem?.emp_pass || '',
+                    emp_bc: selectedItem?.emp_bc || '',
+                    emp_pwd_pass: selectedItem?.emp_pwd_pass || '',
+                    email: selectedItem?.email || '',
+                    dept_name: selectedItem?.dept_name || 'PD',
+                    owner: selectedItem?.owner || '',
+                    quit_date: selectedItem?.quit_date || new Date(2000, 12, 31),
                     roles: selectedItem ? selectedItem.roles : [],
                     systemPrograms: selectedItem ? selectedItem.systemPrograms : [],
                     stations: selectedItem ? selectedItem.stations : [],
@@ -176,149 +244,91 @@ const AddOrEditUserModal = (props) => {
                 }}
                 validationSchema={validationSchema}
                 onSubmit={onSubmitHandler}
-                validate={(values) => {
-                    let errors = {};
+                validate={values => {
+                    const errors = {};
 
-
-                    if (values.checkPasswordRule && values.emp_pass && values.emp_pass.length !== 40) {
-                        const hasUpperCase = /[A-Z]/.test(values.emp_pass);
-                        let msg =`Emp Pass must be have`;
-                        if (!hasUpperCase) {
-
-                            msg +=`${msg.indexOf('at least') >-1 ? ' and': ''} at least one UpperCase`;
-
+                    if (values.checkPasswordRule) {
+                        const empPassError = getPasswordRuleError(values.emp_pass, 'Emp Pass');
+                        if (empPassError) {
+                            errors.emp_pass = empPassError;
                         }
-                        const hasNumber = /[0-9]/.test(values.emp_pass);
-                        if(!hasNumber)
-                        {
-                            msg += `${msg.indexOf('at least') >-1 ? ' and': ''} at least one Number`;
+
+                        const empBcError = getPasswordRuleError(values.emp_bc, 'Emp BC');
+                        if (empBcError) {
+                            errors.emp_bc = empBcError;
                         }
-                        //const hasLowerCase = /[a-z]/.test(value);
-                        const hasSymbole = /["!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"]/.test(values.emp_pass);
-                        if(!hasSymbole) 
-                        {
-                            msg += `${msg.indexOf('at least') >-1 ? ' and': ''} at least one Symbol(!#$%&'()*+,-./:;<=>?@[\]^_\`{|}~)`;
-                        }
-                        if(!hasUpperCase || !hasNumber || !hasSymbole)
-                        {
-                            errors['emp_pass'] = msg;
+
+                        const empPwdPassError = getPasswordRuleError(values.emp_pwd_pass, 'Emp Pwd Pass');
+                        if (empPwdPassError) {
+                            errors.emp_pwd_pass = empPwdPassError;
                         }
                     }
-                    if (values.checkPasswordRule  && values.emp_bc && values.emp_bc.length !== 40) {
-                        const hasUpperCase = /[A-Z]/.test(values.emp_bc);
-                        let msg =`Emp BC must be have`;
-                        if (!hasUpperCase) {
 
-                            msg +=`${msg.indexOf('at least') >-1 ? ' and': ''} at least one UpperCase`;
-
-                        }
-                        const hasNumber = /[0-9]/.test(values.emp_bc);
-                        if(!hasNumber)
-                        {
-                            msg += `${msg.indexOf('at least') >-1 ? ' and': ''} at least one Number`;
-                        }
-                        //const hasLowerCase = /[a-z]/.test(value);
-                        const hasSymbole = /["!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"]/.test(values.emp_bc);
-                        if(!hasSymbole) 
-                        {
-                            msg += `${msg.indexOf('at least') >-1 ? ' and': ''} at least one Symbol(!#$%&'()*+,-./:;<=>?@[\]^_\`{|}~)`;
-                        }
-                        if(!hasUpperCase || !hasNumber || !hasSymbole)
-                        {
-                            errors['emp_bc'] = msg;
-                        }
-                    }
-                    if (values.checkPasswordRule && values.emp_pwd_pass && values.emp_pwd_pass.length !== 40) {
-                        const hasUpperCase = /[A-Z]/.test(values.emp_pwd_pass);
-                        let msg =`Emp Pwd Pass must be have`;
-                        if (!hasUpperCase) {
-
-                            msg +=`${msg.indexOf('at least') >-1 ? ' and': ''} at least one UpperCase`;
-
-                        }
-                        const hasNumber = /[0-9]/.test(values.emp_pwd_pass);
-                        if(!hasNumber)
-                        {
-                            msg += `${msg.indexOf('at least') >-1 ? ' and': ''} at least one Number`;
-                        }
-                        //const hasLowerCase = /[a-z]/.test(value);
-                        const hasSymbole = /["!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"]/.test(values.emp_pwd_pass);
-                        if(!hasSymbole) 
-                        {
-                            msg += `${msg.indexOf('at least') >-1 ? ' and': ''} at least one Symbol(!#$%&'()*+,-./:;<=>?@[\]^_\`{|}~)`;
-                        }
-                        if(!hasUpperCase || !hasNumber || !hasSymbole)
-                        {
-                            errors['emp_pwd_pass'] = msg;
-                        }
-                    }
                     return errors;
                 }}
             >
-                {props =>
-                    <Form>
+                {() => {
+                    const visibleTabs = tabs.filter(tab => tab.visible === undefined || tab.visible);
+                    const modeText = selectedItem ? 'Edit User' : 'Add New User';
 
+                    return (
+                        <Form>
+                            <div className={classes.root}>
+                                <Box className={classes.header}>
+                                    <div className={classes.headerInfo}>
+                                        <Typography variant='h6' className={classes.title}>
+                                            {modeText}
+                                        </Typography>
+                                        <Typography variant='body2' className={classes.subtitle}>
+                                            Fill the information below to configure user profile and access settings.
+                                        </Typography>
+                                    </div>
+                                    <div className={classes.headerActions}>
+                                        <Button
+                                            size='small'
+                                            type='submit'
+                                            variant='contained'
+                                            color='primary'
+                                            className={classes.saveButton}
+                                            startIcon={<SaveIcon />}
+                                        >
+                                            Save
+                                        </Button>
+                                        <IconButton onClick={onClose} color='inherit' className={classes.closeButton}>
+                                            <CloseIcon />
+                                        </IconButton>
+                                    </div>
+                                </Box>
 
+                                <TabContext value={value}>
+                                    <AppBar position='static' className={classes.tabsAppBar} color='inherit'>
+                                        <TabList
+                                            onChange={handleChange}
+                                            aria-label='Users'
+                                            variant='scrollable'
+                                            scrollButtons='auto'
+                                            className={classes.tabList}
+                                        >
+                                            {visibleTabs.map((tab, index) => (
+                                                <Tab key={tab.label} value={`${index}`} label={tab.label} />
+                                            ))}
+                                        </TabList>
+                                    </AppBar>
 
-                        <div className={classes.root}>
-                            <TabContext value={value}>
-                                <AppBar position="static" color='inherit'>
-                                    <Grid container>
-                                        <Grid item>
-                                            <TabList onChange={handleChange} aria-label="Users">
-                                                {tabs.filter(t => {
-                                                    console.log(`Visible: ${t.visible}`);
-                                                    if (t.visible === undefined) {
-                                                        return true;
-                                                    }
-                                                    return t.visible === true;
-                                                }).map((tab, index) => {
-                                                    return <Tab key={index} value={`${index}`} label={tab.label} />
-                                                })}
-                                                {/*<Tab label="User Form" value="1" />
-                                                <Tab label="User Roles" value="2" disabled={isAdministrator ? false : true} />
-                                                <Tab label="User System Programs" value="3" disabled={isAdministrator ? false : true} />
-                                                <Tab label="User Stations" value="4" />
-                                                */}
-
-                                            </TabList>
-                                        </Grid>
-                                        <Grid item sm />
-                                        <Grid item>
-                                            <Button size='small' type='submit' variant='outlined' color='primary' startIcon={
-                                                <SaveIcon />
-                                            }>
-                                                Save
-                                            </Button>
-                                            <IconButton onClick={onClose} color='inherit'>
-                                                <CloseIcon />
-                                            </IconButton>
-                                        </Grid>
-                                    </Grid>
-                                </AppBar>
-                                {tabs.filter(t => {
-                                    if (t.visible === undefined) {
-                                        return true;
-                                    }
-                                    return t.visible === true;
-                                }).map((tab, index) => {
-                                    return <TabPanel key={index} value={`${index}`}>
-                                        {tab.component}
-                                    </TabPanel>
-                                })}
-                                {/*<TabPanel value="1"><UserFormTab isEdit={selectedItem !== null} /></TabPanel>
-                                <TabPanel value="2"> {isAdministrator && <UserRoleTab />}</TabPanel>
-                                <TabPanel value="3"> {isAdministrator && <UserSystemProgramTab />}</TabPanel>
-                                <TabPanel value="4"><UserStationTab /></TabPanel>
-                                */}
-                            </TabContext>
-                        </div>
-
-
-                    </Form>
-                }
+                                    <DialogContent dividers className={classes.dialogContent}>
+                                        {visibleTabs.map((tab, index) => (
+                                            <TabPanel key={tab.label} value={`${index}`} className={classes.tabPanel}>
+                                                {tab.component}
+                                            </TabPanel>
+                                        ))}
+                                    </DialogContent>
+                                </TabContext>
+                            </div>
+                        </Form>
+                    );
+                }}
             </Formik>
-        </Dialog >
+        </Dialog>
     );
 };
 
