@@ -43,8 +43,13 @@ const useStyles = makeStyles(theme => ({
         borderRadius: 14,
         border: `1px solid ${theme.palette.divider}`,
         minHeight: 380,
+        maxHeight: 'min(560px, calc(100vh - 260px))',
         padding: theme.spacing(2),
         backgroundColor: '#fcfdff',
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 0,
+        overflow: 'hidden',
     },
     panelHeader: {
         display: 'flex',
@@ -125,6 +130,12 @@ const useStyles = makeStyles(theme => ({
         flexWrap: 'wrap',
         marginBottom: theme.spacing(2),
     },
+    permissionContent: {
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+        height: '100%',
+    },
     selectedProgramName: {
         fontWeight: 700,
         color: '#16305f',
@@ -143,10 +154,30 @@ const useStyles = makeStyles(theme => ({
         marginRight: 0,
     },
     permissionAutocomplete: {
+        flex: 1,
+        minHeight: 0,
         '& .MuiOutlinedInput-root': {
             alignItems: 'flex-start',
             borderRadius: 10,
             backgroundColor: '#fff',
+        },
+        '& .MuiAutocomplete-inputRoot': {
+            maxHeight: 300,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            scrollbarWidth: 'thin',
+            scrollbarColor: '#a7b4cb #eef2f8',
+            '&::-webkit-scrollbar': {
+                width: 8,
+            },
+            '&::-webkit-scrollbar-track': {
+                background: '#eef2f8',
+                borderRadius: 999,
+            },
+            '&::-webkit-scrollbar-thumb': {
+                background: '#a7b4cb',
+                borderRadius: 999,
+            },
         },
     },
     permissionOption: {
@@ -394,7 +425,7 @@ const UserSystemProgramTab = () => {
                 <Grid item xs={12} md={8}>
                     <Paper className={classes.rightPanel}>
                         {selectedSystemProgram ? (
-                            <>
+                            <Box className={classes.permissionContent}>
                                 <Box className={classes.permissionHeader}>
                                     <Box>
                                         <Typography variant='subtitle1' className={classes.selectedProgramName}>
@@ -467,7 +498,7 @@ const UserSystemProgramTab = () => {
                                     }
                                     renderInput={params => <TextField {...params} label='Permissions' variant='outlined' />}
                                 />
-                            </>
+                            </Box>
                         ) : (
                             <Box className={classes.emptyRightPanel}>
                                 <Typography variant='body2'>

@@ -4,7 +4,6 @@ import { useSnackbar } from 'notistack';
 import useLoading from '../../hooks/useLoading';
 import axios from 'axios';
 import { getErrorMessage } from '../../utils/errorHandler';
-import { useSearchParams } from 'react-router-dom';
 import Paper from '@material-ui/core/Paper';
 import TableContainer from '@material-ui/core/TableContainer';
 import Table from '@material-ui/core/Table';
@@ -178,11 +177,6 @@ const StyledTableRow = withStyles(() => ({
     },
 }))(TableRow);
 
-const parseNumberParam = (value, fallbackValue) => {
-    const parsed = Number.parseInt(value || '', 10);
-    return Number.isNaN(parsed) ? fallbackValue : parsed;
-};
-
 const hasValue = value => value !== undefined && value !== null && value !== '';
 
 const formatDateTime = value => {
@@ -331,7 +325,6 @@ const renderRow = (columns, rows, actions, classes, canShowPassword) => {
 const UserManager = () => {
     const { showLoading } = useLoading();
     const { enqueueSnackbar } = useSnackbar();
-    const [searchParams, setSearchParams] = useSearchParams();
     const classes = useStyles();
     const [open, setOpen] = useState(false);
     const [openImport, setOpenImport] = useState(false);
@@ -340,18 +333,17 @@ const UserManager = () => {
     const [openDialogUpload, setOpenDialogUpload] = useState(false);
     const lastFetchKeyRef = useRef('');
 
-    const initialUsername = searchParams.get('username') || '';
     const [filters, setFilters] = useState({
-        username: initialUsername,
+        username: '',
     });
     const [selectedItem, setSelectedItem] = useState(null);
     const [rowState, setRowState] = useState({
-        pageNumber: parseNumberParam(searchParams.get('pageNumber'), 0),
-        pageSize: parseNumberParam(searchParams.get('pageSize'), 15),
+        pageNumber: 0,
+        pageSize: 15,
         totalCount: 0,
         items: [],
         filters: {
-            username: initialUsername,
+            username: '',
         },
     });
 
@@ -502,26 +494,6 @@ const UserManager = () => {
     useEffect(() => {
         document.title = 'User Manager';
     }, []);
-
-    useEffect(() => {
-        const pageNumber = String(rowState.pageNumber);
-        const pageSize = String(rowState.pageSize);
-        const username = rowState.filters.username || '';
-        const isQueryChanged =
-            searchParams.get('pageNumber') !== pageNumber ||
-            searchParams.get('pageSize') !== pageSize ||
-            searchParams.get('username') !== username;
-
-        if (!isQueryChanged) {
-            return;
-        }
-
-        setSearchParams({
-            pageNumber,
-            pageSize,
-            username,
-        });
-    }, [rowState.pageNumber, rowState.pageSize, rowState.filters.username, searchParams, setSearchParams]);
 
     const columns = [
         {
